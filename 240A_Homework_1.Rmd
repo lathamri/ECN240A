@@ -30,7 +30,12 @@ cps <- mutate(cps,l_earnings=log(earnings/(hours*week)))
 
 1. We've gathered the data from Hansen and changed the column names as recommended, the variables are now named "age","female","hisp","education","earnings","hours","week","union","uncov","region","race","marital".
 
-2. Our data is stored in a list object after reading in by tsv.
+2. Our data is stored in a table or dataframe object after reading in by tsv.
+
+```{r}
+class(cps)
+```
+
 
 ## Basic Regressions 1
 
@@ -57,9 +62,10 @@ reg2
 ```{r regression summary}
 
 res_1 = residuals(reg1)
+head(res_1, 10)
 
 res_2 = residuals(reg2)
-
+head(res_2, 10)
 ```
 
 ## YouR OLS
@@ -75,13 +81,13 @@ b_hat1 = solve(t(X1)%*%X1)%*%t(X1)%*%Y
 
 b_hat2 = solve(t(X2)%*%X2)%*%t(X2)%*%Y
 
-my_res_1 = as.matrix(Y-b_hat1[1]-b_hat1[2]*X1[,2])
+my_res_1 = as.numeric(Y-b_hat1[1]-b_hat1[2]*X1[,2])
 
-my_res_2 = as.matrix(Y-b_hat2[1]-b_hat2[2]*X2[,2]-b_hat2[3]*X2[,3])
+my_res_2 = as.numeric(Y-b_hat2[1]-b_hat2[2]*X2[,2]-b_hat2[3]*X2[,3])
 
-all.equal(res_1, my_res_1)
+all.equal(res_1, my_res_1, check.names=F)
 
-all.equal(res_2, my_res_2)
+all.equal(res_2, my_res_2, check.names=F)
 ```
 
 ## Comparing YouR OLS and the regressions
@@ -139,6 +145,8 @@ all.equal(P%*%P, P)
 ```{r}
 
 M = diag(100)-P
+
+head(M, 2)
 
 ```
 
