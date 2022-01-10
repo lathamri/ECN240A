@@ -1,0 +1,46 @@
+---
+title: "240A Winter 2022: Computing assignment I"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Organisation
+
+- Create groups of 3-5 persons. Choose a name for the group, and send the group composition by email to Warda and Isy by Monday 1/10 at 6pm.
+- Submit your assignment on Canvas by Thursday 1/13 at 6pm. 
+- You must submit an R markdown file with output set to ``ioslides_presentation'' (use the Discussion 1 slides as a template). Please upload both your markdown file and the compiled file (most likely in html format)
+- We will start the discussion on Friday 1/14 with a presentation of the results from two randomly selected groups. 
+
+Tip:  See the ``Regression in R'' handout on Canvas
+
+## Assignment
+
+We will use the 2009 CPS dataset that Hansen uses in his Chapter 2. Refer to the file ``240A_Discussion_1.R'' on Canvas for code to read in these data. Refer to [Hansen's website](https://www.ssc.wisc.edu/~bhansen/econometrics/cps09mar_description.pdf) for details on the variables. 
+
+## A. R OLS
+
+1. Load the CPS data into R. What variables are in the dataset?  
+2. What is the class of the CPS object you have created?  
+3. Regress log of hourly earnings on education and a constant  
+4. Regress log of hourly earnings on education, hisp, and a constant  
+5. Extract residuals from the model. What is the class of the object?  
+
+## B. YouR OLS
+
+6. Compute the OLS coefficient estimates for the above two regressions manually using matrix algebra  
+2. Compare your coefficients to those from the **lm()** function  
+3. Compare your residuals to those from the **lm()** function  
+
+
+## C. Properties of OLS
+
+9. Verify that $X'\hat{e}=0$  
+2. Compute the projection matrix: $P=X(X'X)^{-1}X'$. What is the dimension of P?  
+3. Verify that $PX=X$  
+4. Verify that P is idempotent  
+5. Compute $M = I - X(X'X)^{-1}X'$  
+7. Verify that MX=0  
+

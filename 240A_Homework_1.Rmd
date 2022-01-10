@@ -1,0 +1,155 @@
+---
+title: "240A Assignment 1"
+author: "Riley Latham"
+date: "January 9, 2022"
+output: ioslides_presentation
+---
+
+```{r setup, include=FALSE}
+
+#knitr::opts_chunk$set(echo = FALSE)
+#knitr::opts_chunk$set(prompt = TRUE)
+#hook1 <- function(x){ gsub("```\n*```r*\n*", "", x) }
+# These lines improve formatting of output by removing blank space
+hook2 <- function(x){ gsub("```\n+```\n", "", x) }
+knitr::knit_hooks$set(document = hook2)
+```
+
+```{r Gather Libraries, echo=F, results=F}
+library(tidyverse, dplyr)
+```
+
+
+```{r Gather Data, echo=F, results=F}
+cps <- read_tsv("https://www.ssc.wisc.edu/~bhansen/econometrics/cps09mar.txt",
+                col_names=c("age","female","hisp","education","earnings","hours","week","union","uncov","region","race","marital"))
+
+cps <- mutate(cps,l_earnings=log(earnings/(hours*week)))
+```
+## Gathering Data
+
+1. We've gathered the data from Hansen and changed the column names as recommended, the variables are now named "age","female","hisp","education","earnings","hours","week","union","uncov","region","race","marital".
+
+2. Our data is stored in a list object after reading in by tsv.
+
+## Basic Regressions 1
+
+3. Regressing log(hourly wages) on education and a constant we find
+
+```{r regression 1}
+reg1 = lm(l_earnings~education, data=cps)
+reg1
+```
+
+## Basic Regressions 2
+
+4. Regressing log(hourly wages) on education, hisp, and a constant we find.
+
+```{r regression 2}
+reg2 = lm(l_earnings~education+hisp, data=cps)
+reg2
+```
+
+## Residuals of the model
+
+5. Extracting residuals gives a "double" object. This is essentially a list of decimal valued numbers from our regression coefficients.
+
+```{r regression summary}
+
+res_1 = residuals(reg1)
+
+res_2 = residuals(reg2)
+
+```
+
+## YouR OLS
+
+1. First we're asked to compute by hand the OLS coefficients for the above regressions. We use $\hat{\beta} = (X^TX)^{-1}(X^TY)$ where $Y$ is log earnings and $X$ is education in the first regression and a matrix of education and hisp in the second.
+
+```{r echo=F, results=F}
+Y = as.matrix(cps$l_earnings)
+X1 = as.matrix(cbind(1,cps$education))
+X2 = as.matrix(cbind(1, cps$education, cps$hisp))
+
+b_hat1 = solve(t(X1)%*%X1)%*%t(X1)%*%Y
+
+b_hat2 = solve(t(X2)%*%X2)%*%t(X2)%*%Y
+
+my_res_1 = as.matrix(Y-b_hat1[1]-b_hat1[2]*X1[,2])
+
+my_res_2 = as.matrix(Y-b_hat2[1]-b_hat2[2]*X2[,2]-b_hat2[3]*X2[,3])
+
+all.equal(res_1, my_res_1)
+
+all.equal(res_2, my_res_2)
+```
+
+## Comparing YouR OLS and the regressions
+
+2. We notice that our matrix algebra for regression 1 yields `r b_hat1` and for regression 2, `r b_hat2`. These are exactly the same coefficients as our prior regressions using lm(). This is exactly what we expect, as mathematically they are equivalent.
+
+3. We also notice that the residuals are the same using the formula $Y-\hat{\beta}_0 - \hat{\beta}_1X_1...$ to calculate them. I omit displaying the output as it is not easy to parse through visually.
+
+## Properties of OLS
+
+1. Verifying that $X^T\hat{e}=0$.
+
+```{r}
+zeros_1 = as.matrix(rep(0,2))
+
+all.equal(t(X1)%*%my_res_1, zeros_1)
+
+zeros_2 = as.matrix(rep(0,3))
+
+all.equal(t(X2)%*%my_res_2, zeros_2)
+```
+
+
+2. Compute the projection matrix: $P=X(X'X)^{-1}X'$. What is the dimension of P?
+
+```{r}
+sparse_X = head(X1, 100)
+
+P = sparse_X%*%solve(t(sparse_X)%*%sparse_X)%*%t(sparse_X)
+
+dim(P)
+```
+
+
+3. Verify that $PX=X$.
+
+```{r}
+
+all.equal(P%*%sparse_X,sparse_X)
+
+```
+
+
+## More Properties of OLS
+4. Verify that P is idempotent.
+
+```{r}
+
+all.equal(P%*%P, P)
+
+```
+
+5. Compute $M = I - X(X'X)^{-1}X'$.
+
+```{r}
+
+M = diag(100)-P
+
+```
+
+
+6. Verify that MX=0 .
+ 
+```{r}
+
+zeros_m = matrix(0,100,2)
+
+all.equal(M%*%sparse_X, zeros_m)
+
+```
+

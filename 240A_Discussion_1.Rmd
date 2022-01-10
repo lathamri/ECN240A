@@ -1,0 +1,730 @@
+---
+title: "R basics"
+author: "Aaron Smith"
+date: "January 7, 2022"
+output: ioslides_presentation
+---
+
+```{r setup, include=FALSE}
+
+#knitr::opts_chunk$set(echo = FALSE)
+#knitr::opts_chunk$set(prompt = TRUE)
+#hook1 <- function(x){ gsub("```\n*```r*\n*", "", x) }
+# These lines improve formatting of output by removing blank space
+hook2 <- function(x){ gsub("```\n+```\n", "", x) }
+knitr::knit_hooks$set(document = hook2)
+```
+
+
+## Computing Discussions
+
+Discussion Format:
+
+1. Start with 5-10 minutes presentation of previous assignment by 1-2 randomly selected groups
+2. Introduce new R concepts
+
+To Do:
+
+1. Form groups of 3-5, choose name, email group composition to me and Isy by Monday 1/10 at 6pm
+2. Submit computing assignments by Thursday 6pm before discussion
+
+## Computing Assignments
+
+Turn in a markdown file containing a presentation of your results
+
+* Today, we'll learn what a markdown file is
+
+Next week's assignment:
+
+1. Compute OLS manually
+2. Compute OLS with built-in functions
+3. Show various properties of projections matrices
+
+
+
+
+
+## R
+
+* Open source
+* Runs on (pretty much) anything
+* Large and diverse community of users (bio-stats, psychometrics, finance)
+* Over 12,000 user-created packages
+* Three essential features:
+    + R studio
+    + R markdown
+    + **tidyverse** suite of packages
+
+
+## R Resources
+
+Help:
+
+- For info on a command (say, lm), type **help(lm)** or just **?lm** in the R console
+
+Online:
+
+- [R-bloggers](https://www.r-bloggers.com/) aggregates >750 blogs about R
+- [Journal of statistical software](https://www.jstatsoft.org/index)
+- [R journal](https://journal.r-project.org/)
+- [Stack overflow](https://stackoverflow.com/questions/tagged/r) has >300,000 R questions
+
+Reading:
+
+- excellent book: [R for Data Science](http://r4ds.had.co.nz/)
+
+
+
+
+## R Studio
+
+The best GUI for R:
+
+- Includes a code editor with syntax highlighting, code indentation, and code completion
+- Integrates notebook-like tools for dynamic documents
+
+Other features that we likely won't get to:
+
+- Version control toolsv (svn, git, links to github)
+- Support for shiny interactive apps. [Demo](https://shiny.rstudio.com/gallery/kmeans-example.html)
+- System of R projects for full reproducibility
+
+
+## R Studio
+
+
+- Upper left:  Scripts for the working files
+- Bottom left: The R Console
+- Upper right: Workspace or history
+- Bottom right: Help or plots or file structure control  
+
+
+## R markdown
+
+A format for mixing text and code (similar to Python notebooks)
+
+Text formats:  
+- markdown: simple formatting codes  
+- LaTeX: for equations
+
+This allows:  
+- elegant commenting of code  
+- automated and reproducible document  
+- html or PDF output
+
+Full details [here](https://rmarkdown.rstudio.com/lesson-1.html). This [cheatsheet](https://rstudio.com/wp-content/uploads/2016/03/rmarkdown-cheatsheet-2.0.pdf) is helpful.
+
+This [site](https://www.stat.cmu.edu/~cshalizi/rmarkdown/) has a good intro to RMD.
+
+
+## Essential set of packages
+
+Tidyverse is a collection of packages that includes:
+
+ - ggplot2: tools to make nice graphs
+ - dplyr and tidyr: data manipulation 
+ - tibble: data frame operations 
+
+```{r, eval=FALSE}
+# Download and install 
+install.packages("tidyverse")
+
+# Load into R 
+library(tidyverse)
+```
+
+
+## R basics: running code
+
+The output is always shown in the console, but we can run code in two different ways:
+
+- Console:  Input code is run after hitting **enter**
+- Script: Input code is run after cliking run (or **ctrl + enter**). 
+
+
+Example:
+```{r, echo = TRUE}
+1+2
+3*(2-1)
+```
+
+
+## R basics: command prompt
+
+Note the two different signs in the console:
+
+- **">"** Waiting for new command
+- **"+"** Waiting for end of previous command
+
+Sometimes, we write badly a command (e.g. unbalanced brackets), so need to come back to the ">" sign: use **esc**. 
+
+
+
+
+## R basics: assignment operator
+
+To *save* a result/object, we can *assign* it to a name. Assignment operator is  **<-** (use this rather than **=**)
+
+Assign the output to a variable *a*:
+```{r}
+a <- 1+2
+```
+
+Typing the name of the object **prints** it
+```{r}
+print(a)
+a
+```
+
+
+## R basics: Naming conventions
+
+- R is case senstive! aname $\neq$ aName
+- We can use any letters and numbers for the assigned name (with dots or underscore, no space) but always start with a letter!
+- Note that R lets you overwrite values without a warning. 
+
+
+
+## R basics: [Data structures](http://adv-r.had.co.nz/Data-structures.html)
+
+
+- **vector**  
+- **matrix**: allows only one type of data at a time (e.g., numeric)  
+- **data-frame**: can mix types, e.g., a numeric and character
+- **list**: mix of anything, including sub-lists
+
+What data structure is *a*?
+```{r, echo = TRUE}
+is.vector(a)
+is.matrix(a)
+is.data.frame(a)
+is.list(a)
+```
+
+
+
+## Vectors I
+
+To create vectors by combining values, use **c()**, check [**?c**](http://stat.ethz.ch/R-manual/R-devel/library/base/html/c.html)
+
+```{r}
+c(1,2,3)
+c("cat", "dog")
+```
+
+
+Elements in the vector can be named:
+
+```{r}
+c(a=1, b=2, c=3)
+```
+
+
+## Vectors Ib
+
+Creating simple vectors: 
+
+- **rep()**: repeats values, i.e. rep(c(1,3), 3)
+- **seq()**: sequences of numbers, i.e. seq(0, 1, 0.1)
+- For a sequence of integer numbers, can just use **a:b**
+
+```{r}
+rep(c(1,3),3)
+seq(0, 1, 0.1)
+1:4
+```
+
+
+
+## Vectors II
+
+A few functions:
+
+- **length()**
+- **names()**
+
+Both functions return as output a vector!
+
+
+## Vectors III: Vector algebra
+
+2 vectors of same length: elements by elements
+
+```{r}
+vec_1 <- c(1,2,3) 
+vec_2 <- c(4,5,6) 
+
+vec_1 + vec_2
+```
+
+One vector and a *scalar* (i.e. a vector of length 1):
+
+```{r}
+vec_1 * 2
+```
+
+
+## Vectors IV
+
+We can access elements of a vector using **[]**:
+
+```{r}
+vec_1 <- c(1,2,3) 
+vec_1[1]
+vec_1[1:2]
+vec_1[c(1,3)]
+```
+
+Of if the elements were named, we can access by name:
+
+```{r}
+vec_3<-c(a=1,b=2,c=3) 
+vec_3[c("a","b")]
+```
+
+## Vectors V
+
+We can also modify elements of an existing vector: use the assignment operator **<-**
+
+```{r}
+vec_1 <- c(1,2,3) 
+vec_1[2] <- 3
+vec_1
+```
+
+So the assignment operator serves two purposes:
+
+- *save* a new object
+- modify elements/attributes of an object
+
+
+
+## Matrices I
+
+Matrices are 2-dimensional collections of one single type of data, usually numeric. 
+
+
+```{r}
+mymat <- matrix(1:36, nrow=6, ncol=6)
+mymat
+class(mymat)
+```
+
+
+## Matrices II
+
+We can access (or modify) elements of a matrix with **[,]**
+
+
+```{r}
+mymat <- matrix(1:4, nrow=2, ncol=2)
+mymat
+mymat[1,2]
+mymat[1:2,2]
+```
+
+Leaving a dimension empty selects all the elements:
+
+```{r}
+mymat[1,]
+```
+
+
+## Matrices III
+
+Two important caveats
+
+- Extracted elements might not be matrices anymore:  M[1,1] is not a 1 x 1 matrix! 
+- Vectors are not 1 x k matrices! For example: **length()** for a vector, **dim()** for a matrix
+
+## Matrices IV
+
+Functions for matrices:
+
+- **dim()**
+- **colnames()**
+- **rownames()**
+- **diag()**
+
+
+## Matrices V: colnames()
+
+**colnames()** and **rownames()** have, like the [] operator, two distinct functioning:
+
+1. Called alone: return the colnames/rownames
+2. Called with a <-: change the colnames/rownames
+
+```{r}
+mymat <- matrix(1:4, nrow=2, ncol=2)
+colnames(mymat)
+colnames(mymat) <- c("a", "b")
+colnames(mymat)
+```
+
+ 
+
+## Matrices VI
+
+Matrix computations:
+
+- $X^{'}$:   **t()**
+- $X^{-1}$:   **solve()**
+- $XY$:   X%*%Y
+
+## Matrices VII: adding rows/columns
+
+Matrix computations:
+
+- **rbind()** add row
+- **cbind()** add col
+
+```{r}
+M1 <- matrix(1:4, nrow= 2, ncol=2)
+M2 <- matrix(4, nrow=2, ncol=1)
+cbind(M1, M2)
+```
+
+
+
+## R data frames
+
+A data frame is a list of variables of equal length  
+
+ - each column contains values of one variable and each row contains one set of values from each variable  
+ 
+ - i.e., a matrix with columns of possibly mixed types
+
+```{r}
+x <- data.frame("Index" = 1:2, "Age" = c(35,41), "Name" = c("Fred","Jane"))
+x
+```
+
+Use **$** to select variables from a data frame
+
+```{r}
+x$Age
+```
+
+
+
+## R data frames: extract a matrix
+
+
+```{r}
+x1 <- as.matrix(x[1:2])
+class(x1)
+x1
+```
+
+Alternate code
+
+```{r}
+x2 <- cbind(Index=x$Index,Age=x$Age)
+x2
+```
+
+
+
+## List I
+`c()` requres elements to have the same data type, but `list()` can store multiple data types.
+```{r}
+
+a <- c(1,2,3,4) 
+
+b <- list(matrix(a, nrow=2), c(1:3))
+
+b
+```
+
+
+## List II
+`list()` can have names inside.
+```{r}
+b <- list(this_is_matrix = matrix(a, nrow=2), this_is_vector = c(1:3))
+b
+```
+
+## List III
+We can access elements of a list using **[[]]**
+```{r}
+
+b[[1]] # by location
+b[["this_is_vector"]] # by name
+```
+
+
+## List IV
+We can subsequently subset elements. (chaining)
+```{r}
+b
+b[[1]][2]
+```
+
+
+## List V
+You can combine elements using `bind_rows()` from `tidyverse` if elements have names and the same length.
+
+```{r, include=FALSE}
+library(tidyverse)
+```
+
+```{r}
+
+c <- list(a=1:2,b=2:3)
+c
+bind_rows(c)
+```
+
+
+## R functions 
+
+Look at mean: [**?mean**](http://stat.ethz.ch/R-manual/R-devel/library/base/html/mean.html)
+
+```{r, eval=FALSE}
+mean(x, trim = 0, na.rm = FALSE, ...)
+```
+
+- not all arguments need to be specified  
+- arguments do no need to be named, unless order is changed
+
+```{r}
+mean(c(1,2,3))
+mean(c(1,2,3), 0)
+mean(trim=0, x=c(1,2,3))
+```
+
+
+## Regression I
+
+Look at mean: [**?lm**](http://stat.ethz.ch/R-manual/R-devel/library/stats/html/lm.html)
+
+```{r, eval=FALSE}
+lm(formula, data, subset, weights, na.action,
+   method = "qr", model = TRUE, x = FALSE, y = FALSE, qr = TRUE,
+   singular.ok = TRUE, contrasts = NULL, offset, ...)
+```
+
+Two main arguments:
+
+- formula
+- data 
+
+- not all arguments need to be specified  
+- arguments do no need to be named, unless order is changed
+
+## Regression II
+
+Use `tidy()` from a package called `broom` to "nicely" store key regression results. 
+```{r}
+library(broom)
+reg <- lm(y ~ price.index+income.level, data=freeny)
+tidy(reg)
+```
+
+
+
+## Tidyverse: the tibble
+
+"A tibble is a modern reimagining of the data.frame, keeping what time has proven to be effective, and throwing out what is not".
+
+Main differences between a data.frame and a tibble/data_frame:
+
+1. a tibble prints only 10 first rows, not 9999 first
+2. a tibble prints the classes of each variables on top
+3. a tibble prints the dimension of the dataset on top
+
+```{r}
+data <- as.tbl(mtcars)[,1:5]
+```
+
+
+## Tidyverse: the tibble
+
+Example using the built-in dataset **mtcars**
+
+```{r}
+data
+```
+
+
+## Tidyverse: the tibble
+
+Example using the built-in dataset **mtcars**
+
+```{r}
+head(data)
+```
+
+## Tidyverse: [dplyr package](https://rstudio.com/wp-content/uploads/2015/02/data-wrangling-cheatsheet.pdf)
+
+- dplyr package is a widely used data manipulation tool
+
+Main *verbs*:
+
+* `filter()` to select cases based on their values.
+* `arrange()` to reorder the cases.
+* `select()` and `rename()` to select variables based on their names.
+* `mutate()` and `transmute()` to add new variables that are functions of existing variables.
+* `summarise()` to condense multiple values to a single value.
+<!-- * `sample_n()` and `sample_frac()` to take random samples. -->
+
+Semantics:
+
+* `group_by()`: allows use to `summarise()`, `mutate()`, or `filter()` by group
+
+## Tidyverse: [dplyr package](https://rstudio.com/wp-content/uploads/2015/02/data-wrangling-cheatsheet.pdf)
+
+2 principles in these functions:
+
+- first argument is always the data-frame itself
+- second refers to variables in the data-frame without quotes
+
+```{r, results="hide"}
+select(data, cyl)
+mutate(data, mpg_hp = mpg*hp)
+filter(data, cyl> 4)
+```
+
+
+## dplyr: Summarise values with `summarise()`
+
+`summarise()` collapses a data frame to a single row. 
+
+1. The first argument is the data-frame. 
+2. The second and next arguments,  use: `newname = ..., newname2 = ...`
+
+```{r}
+summarise(data, 
+          mean_mpg = mean(mpg),
+          mean_cyl = mean(cyl))
+```
+
+
+## dplyr: Add columns with  `mutate()`
+
+`mutate()` adds a column to an existing dataframe. 
+
+1. The first argument is the data-frame. 
+2. The second and next arguments,  use: `newname = ..., newname2 = ...`
+
+
+```{r}
+data <- mutate(data, mpg_hp = mpg*hp)
+
+```
+
+## dplyr: group_by
+
+`group_by()`: change the way verbs act. Most important is behaviour of `summarise()`, which returns now one row per group.
+
+```{r}
+data_by_cyl <- group_by(data, cyl)
+summarise(data_by_cyl, 
+          mean_mpg = mean(mpg))
+```
+
+
+## dplyr: Filter rows with `filter()`
+
+`filter()` allows you to select a subset of rows in a data frame. 
+
+1. The first argument is the data-frame. 
+2. The second argument refers to variables within that data frame, selecting rows where the expression is `TRUE`.
+
+```{r}
+filter(data, cyl==6)
+```
+
+
+## dplyr: Arrange rows with `arrange()`
+
+`arrange()` works similarly to `filter()` except that instead of filtering or selecting rows, it reorders them. It takes a data frame, and a set of column names (or more complicated expressions) to order by. If you provide more than one column name, each additional column will be used to break ties in the values of preceding columns:
+
+```{r}
+arrange(data, cyl, mpg)
+```
+
+## dplyr: Select columns with `select()`
+
+```{r, echo=FALSE}
+options(tibble.print_min=2)
+```
+
+
+```{r}
+select(data, cyl, mpg)
+```
+
+
+
+Can also select negatively, i.e. remove
+```{r}
+select(data, -cyl)
+```
+
+
+## dplyr: Select columns with `select()`
+
+- `everything()`: helpful to reorder variables: `select(df, a, everything())`
+- `starts_with()`, `ends_with()`
+- `contains()`
+- `matches()` for regular expressions
+
+
+## Changing data-frames (transitory changes)
+
+In R, functions working on data-frames are transitory: if you don't *save* the result, it just prints it. 
+
+```{r, eval=FALSE}
+filter(data, cyl== "6")
+data
+```
+
+
+## Changing data-frames (permanent changes)
+
+Functions don't change the object, so we need to save it every time:
+
+```{r, eval=FALSE}
+df_2 <- fo1(df)
+df_3 <- fo2(df_2)
+df_4 <- fo3(df_3)
+```
+
+or use multiple parentheses
+
+```{r, eval=FALSE}
+df_4 <- fo3(fo2(fo1(df)))
+```
+
+In this example, fo1, fo2, and fo3 are hypothetical functions.
+
+
+## dplyr: Changing data-frames using chaining
+
+A much easier way is to use *pipes*: '%>%'
+
+```{r, eval=FALSE}
+df_2 <- fo1(df) %>%
+  fo_2() %>%
+  fo_3()
+```
+
+
+This assumes that the first argument is the input data-frame. Hence, don't need to indicate which data frame after the "%>%"
+
+It is the same as **fo_3(fo_2(fo1(df)))**
+
+
+## dplyr: Changing data-frames using chaining
+
+```{r}
+
+new_data <- data %>% 
+  filter(mpg > 15 & cyl >= 3) %>%
+  mutate(mpg_hp = mpg*hp) %>%
+  group_by(cyl) %>%
+  mutate(mpg_by_cyl = mean(mpg)) 
+
+head(new_data)
+```
