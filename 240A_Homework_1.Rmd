@@ -21,14 +21,14 @@ library(tidyverse, dplyr)
 
 
 ```{r Gather Data, echo=F, results=F}
-cps <- read_tsv("https://www.ssc.wisc.edu/~bhansen/econometrics/cps09mar.txt",
+cps <- read_tsv("~/PhD TextBooks and Coursework/ECN240A/cps09mar.txt",
                 col_names=c("age","female","hisp","education","earnings","hours","week","union","uncov","region","race","marital"))
 
 cps <- mutate(cps,l_earnings=log(earnings/(hours*week)))
 ```
 ## Gathering Data
 
-1. We've gathered the data from Hansen and changed the column names as recommended, the variables are now named "age","female","hisp","education","earnings","hours","week","union","uncov","region","race","marital".
+1. We've gathered the data from Hansen and changed the column names as recommended, the variables are now named "age", "female", "hisp", "education", "earnings", "hours", "week", "union", "uncov", "region", "race", "marital".
 
 2. Our data is stored in a table or dataframe object after reading in by tsv.
 
@@ -62,15 +62,13 @@ reg2
 ```{r regression summary}
 
 res_1 = residuals(reg1)
-head(res_1, 10)
+head(res_1, 5)
 
 res_2 = residuals(reg2)
-head(res_2, 10)
+head(res_2, 5)
 ```
 
 ## YouR OLS
-
-1. First we're asked to compute by hand the OLS coefficients for the above regressions. We use $\hat{\beta} = (X^TX)^{-1}(X^TY)$ where $Y$ is log earnings and $X$ is education in the first regression and a matrix of education and hisp in the second.
 
 ```{r echo=F, results=F}
 Y = as.matrix(cps$l_earnings)
@@ -89,6 +87,7 @@ all.equal(res_1, my_res_1, check.names=F)
 
 all.equal(res_2, my_res_2, check.names=F)
 ```
+1. First we're asked to compute by hand the OLS coefficients for the above regressions. We use $\hat{\beta} = (X^TX)^{-1}(X^TY)$ where $Y$ is log earnings and $X$ is education in the first regression and a matrix of education and hisp in the second. The equation is solved using `r b_hat1`, and `r b_hat2`.
 
 ## Comparing YouR OLS and the regressions
 
@@ -110,7 +109,7 @@ zeros_2 = as.matrix(rep(0,3))
 all.equal(t(X2)%*%my_res_2, zeros_2)
 ```
 
-
+## More Properties of OLS
 2. Compute the projection matrix: $P=X(X'X)^{-1}X'$. What is the dimension of P?
 
 ```{r}
@@ -121,7 +120,7 @@ P = sparse_X%*%solve(t(sparse_X)%*%sparse_X)%*%t(sparse_X)
 dim(P)
 ```
 
-
+## More Properties of OLS
 3. Verify that $PX=X$.
 
 ```{r}
@@ -140,6 +139,7 @@ all.equal(P%*%P, P)
 
 ```
 
+## More Properties of OLS
 5. Compute $M = I - X(X'X)^{-1}X'$.
 
 ```{r}
@@ -150,7 +150,7 @@ head(M, 2)
 
 ```
 
-
+## More Properties of OLS
 6. Verify that MX=0 .
  
 ```{r}
