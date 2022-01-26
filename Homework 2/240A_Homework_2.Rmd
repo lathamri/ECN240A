@@ -85,11 +85,11 @@ Now we can simulate these regressions under different HCx situations.
 
 ```{r}
 
-num_reps = 1000
+num_reps = 100
 
 # Let's first build the regressions
 
-reg_test = function(rep, omega, index){
+reg_test = function(rep, omega, index, covtype){
   n = rep(0,100)
   n = replace_func(index, n) # Use the replace function to build the dummy vector
   p = length(which(n==1))
@@ -101,17 +101,18 @@ reg_test = function(rep, omega, index){
   
   reg = lm(y~xx, data=df)
   
-  return(sqrt(diag(vcov(reg))))
+  AVSE = sqrt(diag(vcovHC(reg, type=covtype)))[2]
+  
+  return(list(True = diag(vcovHC(reg, type=covtype))[2], AvgOver = AVSE))#, T_stat = summary(vcovHC(reg))[["coefficients"]][, "t value"][2]))
 }
 
 ## Parameter Settings
-param_list.2 <- expand.grid(rep=1:num_reps, omega = c(1,2), index=c(3,10,25)) 
+param_list.2 <- expand.grid(rep=1:num_reps, omega = c(1,2), index=c(3,10,25), covtype=list("const", "HC0", "HC2", "HC3"))
 
 ## Run simulation
 sim_out.2 <- param_list.2 %>%
   mutate(results=pmap(param_list.2,reg_test)) %>%
   unnest_wider(results)
-
 
 ```
 
