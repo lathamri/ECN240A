@@ -1,0 +1,117 @@
+---
+title: "240A Homework 2"
+author: "Riley Latham"
+date: "January 25, 2022"
+output: ioslides_presentation
+---
+
+```{r setup, include=FALSE}
+
+#knitr::opts_chunk$set(echo = FALSE)
+#knitr::opts_chunk$set(prompt = TRUE)
+#hook1 <- function(x){ gsub("```\n*```r*\n*", "", x) }
+# These lines improve formatting of output by removing blank space
+hook2 <- function(x){ gsub("```\n+```\n", "", x) }
+knitr::knit_hooks$set(document = hook2)
+```
+
+```{r Gather Libraries, echo=F, results=F}
+library(tidyverse, dplyr, sandwich)
+
+set.seed(42)
+```
+
+## 1
+
+We first create our data matrix with each moment populating its own column.
+
+```{r}
+
+dist_list = list(N01 = function(n) rlnorm(n,0,1),
+                 N31 = function(n) rlnorm(n,3,1),
+                 N03 = function(n) rlnorm(n,0,3))
+
+sim_func = function(rep, n, pop_dist){
+  
+  dat <- tibble(xx = dist_list[[pop_dist]](n),
+           err = rnorm(n=n,0,1),
+           y=xx+err)
+  reg <- lm(y~xx, data=dat)
+  results <- list(beta_lm = coefficients(reg)[2], beta_ana = cov(x=dat$xx, y=dat$y)/var(x=dat$xx))
+  return(results)
+}
+
+num_reps=1000
+
+param_list <- expand.grid(rep=1:num_reps, n=c(10,100,1000), pop_dist = c("N01", "N31", "N03")) 
+
+sim_out <- param_list %>%
+  mutate(results=pmap(param_list,sim_func)) %>%
+  unnest_wider(results) 
+
+sim_print <- group_by(sim_out,n,pop_dist) %>%
+  mutate(mean_beta=mean( beta_lm)) %>%
+  ungroup() %>%
+  select(n,pop_dist,mean_beta) %>%
+  distinct() %>%
+  pivot_wider(names_from=pop_dist, values_from=mean_beta)
+
+sim_print
+
+```
+
+## 2
+
+Let's first create our data set and instantiate the proper variables.
+
+```{r}
+n0 = rep(0, 100)
+
+# takes in an amount to replace labeled index and a starting list, in this case as vector of 100 zeros.
+# recursively applies the replace function to get our new list of sparse dummy variables.
+replace_func = function(index, n) {
+  for (i in 1:index) {
+  n = replace(n, i, 1)
+  }
+  return(n)
+}
+
+# Instantiate omega and n1 values
+omega = list(1,2)
+n1 = list(3,10,25)
+```
+
+Now we can simulate these regressions under different HCx situations.
+
+```{r}
+
+num_reps = 1000
+
+# Let's first build the regressions
+
+reg_test = function(rep, omega, index){
+  n = rep(0,100)
+  n = replace_func(index, n) # Use the replace function to build the dummy vector
+  p = length(which(n==1))
+  errors = c(rnorm(p, 0, omega^2), rnorm(length(n)-p, 0, 1))
+  
+  df = tibble(xx = n,
+              err = errors,
+              y = err**2)
+  
+  reg = lm(y~xx, data=df)
+  
+  return(sqrt(diag(vcov(reg))))
+}
+
+## Parameter Settings
+param_list.2 <- expand.grid(rep=1:num_reps, omega = c(1,2), index=c(3,10,25)) 
+
+## Run simulation
+sim_out.2 <- param_list.2 %>%
+  mutate(results=pmap(param_list.2,reg_test)) %>%
+  unnest_wider(results)
+
+
+```
+
