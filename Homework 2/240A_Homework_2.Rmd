@@ -18,6 +18,8 @@ knitr::knit_hooks$set(document = hook2)
 ```{r Gather Libraries, echo=F, results=F}
 library(tidyverse, dplyr, sandwich)
 
+library(lmtest)
+
 set.seed(42)
 ```
 
@@ -103,16 +105,26 @@ reg_test = function(rep, omega, index, covtype){
   
   AVSE = sqrt(diag(vcovHC(reg, type=covtype)))[2]
   
-  return(list(True = diag(vcovHC(reg, type=covtype))[2], AvgOver = AVSE))#, T_stat = summary(vcovHC(reg))[["coefficients"]][, "t value"][2]))
+  return(list(True = diag(vcovHC(reg, type=covtype))[2], AvgOver = AVSE, 
+              T_stat = coeftest(reg, vcov. = vcovHC(reg, type = 'HC1'))[6]))
 }
 
 ## Parameter Settings
-param_list.2 <- expand.grid(rep=1:num_reps, omega = c(1,2), index=c(3,10,25), covtype=list("const", "HC0", "HC2", "HC3"))
+param_list.2 <- expand.grid(rep=1:num_reps, omega = c(1,2), index=c(3,10,25), covtype=list("const", "HC0", "HC1", "HC2"))
 
 ## Run simulation
 sim_out.2 <- param_list.2 %>%
   mutate(results=pmap(param_list.2,reg_test)) %>%
   unnest_wider(results)
+
+sim_print.2 <- group_by(sim_out.2, omega, index, covtype) %>%
+  mutate(mean_beta=mean(True)) %>%
+  ungroup() %>%
+  select(omega,index,covtype,mean_beta) %>%
+  distinct() %>%
+  pivot_wider(names_from=covtype, values_from=mean_beta)
+
+sim_print.2
 
 ```
 
