@@ -176,36 +176,9 @@ slide:not(.current) .plotly.html-widget{
           </hgroup>
   </slide>
 
-<pre >## Warning: package &#39;tidyverse&#39; was built under R version 4.1.2
-## -- Attaching packages --------------------------------------- tidyverse 1.3.1 --
-## v ggplot2 3.3.5     v purrr   0.3.4
-## v tibble  3.1.6     v dplyr   1.0.7
-## v tidyr   1.1.4     v stringr 1.4.0
-## v readr   2.1.1     v forcats 0.5.1
-## Warning: package &#39;ggplot2&#39; was built under R version 4.1.2
-## Warning: package &#39;tibble&#39; was built under R version 4.1.2
-## Warning: package &#39;tidyr&#39; was built under R version 4.1.2
-## Warning: package &#39;readr&#39; was built under R version 4.1.2
-## Warning: package &#39;purrr&#39; was built under R version 4.1.2
-## Warning: package &#39;dplyr&#39; was built under R version 4.1.2
-## Warning: package &#39;stringr&#39; was built under R version 4.1.2
-## Warning: package &#39;forcats&#39; was built under R version 4.1.2
-## -- Conflicts ------------------------------------------ tidyverse_conflicts() --
-## x dplyr::filter() masks stats::filter()
-## x dplyr::lag()    masks stats::lag()
-## Warning: package &#39;lmtest&#39; was built under R version 4.1.2
-## Loading required package: zoo
-## Warning: package &#39;zoo&#39; was built under R version 4.1.2
-## 
-## Attaching package: &#39;zoo&#39;
-## The following objects are masked from &#39;package:base&#39;:
-## 
-##     as.Date, as.Date.numeric
-## Warning: package &#39;sandwich&#39; was built under R version 4.1.2</pre>
-
 <slide class=""><hgroup><h2>1. Data Creation</h2></hgroup><article  id="data-creation">
 
-<p>We first create our data matrix with each moment populating its own column.</p>
+<p>We first create our distribution list of length n. We use lognormal distributions for each value and vary the parameters for mean and standard deviation.</p>
 
 <pre class = 'prettyprint lang-r'># Set seed for repeatable results
 set.seed(42)
@@ -213,58 +186,51 @@ set.seed(42)
 # Create list of distributions of interest
 dist_list = list(N01 = function(n) rlnorm(n,0,1),
                  N31 = function(n) rlnorm(n,3,1),
-                 N03 = function(n) rlnorm(n,0,3))
+                 N03 = function(n) rlnorm(n,0,3))</pre>
 
+</article></slide><slide class=""><hgroup><h2>1. Simulation Function</h2></hgroup><article  id="simulation-function">
+
+<p>Here we follow the function outlined on canvas to build out our results. This allows us to quickly solve for \(\hat{\beta}_1\) under each distribution of \(x\).</p>
+
+<pre class = 'prettyprint lang-r'>set.seed(42)
 # Create simulation function to generate results.
 sim_func = function(rep, n, pop_dist){
   
   dat &lt;- tibble(xx = dist_list[[pop_dist]](n),
            err = rnorm(n=n,0,1),
-           y=xx+err)
+           y=log(xx)+err)
   reg &lt;- lm(y~xx, data=dat)
-  results &lt;- list(beta_lm = coefficients(reg)[2], beta_ana = cov(x=dat$xx, y=dat$y)/var(x=dat$xx))
+  results &lt;- list(beta_lm = coefficients(reg)[2],
+                  beta_ana = cov(x=dat$xx, y=dat$y)/var(x=dat$xx),
+                  SE = se &lt;- sqrt(diag(vcov(reg)))[2])
   return(results)
-}
-
-# Instantiate repetitions and grid of parameters for running simulations
-num_reps=1000
-param_list &lt;- expand.grid(rep=1:num_reps, n=c(10,100,1000), pop_dist = c(&quot;N01&quot;, &quot;N31&quot;, &quot;N03&quot;)) 
-
-# Pass parameters to simulation
-sim_out &lt;- param_list %&gt;%
-  mutate(results=pmap(param_list,sim_func)) %&gt;%
-  unnest_wider(results) 
-
-# Group and print relevant information
-sim_print &lt;- group_by(sim_out,n,pop_dist) %&gt;%
-  mutate(mean_beta=mean( beta_lm)) %&gt;%
-  ungroup() %&gt;%
-  select(n,pop_dist,mean_beta) %&gt;%
-  distinct() %&gt;%
-  pivot_wider(names_from=pop_dist, values_from=mean_beta)
-
-sim_print
-## # A tibble: 3 x 4
-##       n   N01   N31   N03
-##   &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt;
-## 1    10  1.00  1.00  1.00
-## 2   100  1.00  1.00  1.00
-## 3  1000  1.00  1.00  1.00</pre>
-
-</article></slide><slide class=""><hgroup><h2>2</h2></hgroup><article  id="section">
-
-<p>Let’s first create our data set and instantiate the proper variables.</p>
-
-<pre class = 'prettyprint lang-r'># takes in an amount of values to replace labeled index and a starting list, in this case a vector of 100 zeros.
-# recursively applies the replace function to get our new list of sparse dummy variables.
-replace_func = function(index, n) {
-  for (i in 1:index) {
-  n = replace(n, i, 1)
-  }
-  return(n)
 }</pre>
 
-<p>Now we can simulate these regressions under different HCx situations.</p>
+</article></slide><slide class=""><hgroup><h2>1. Simulation output</h2></hgroup><article  id="simulation-output">
+
+<p>Finally we’re ready to run and output our simulation. The values shown are averages for each \(\hat{\beta}_1\) across 1000 repetitions. We see that the mis-specification of our data generation creates</p>
+
+<pre >## # A tibble: 3 x 4
+##       n   N01    N31     N03
+##   &lt;dbl&gt; &lt;dbl&gt;  &lt;dbl&gt;   &lt;dbl&gt;
+## 1    10 0.671 0.0341 0.191  
+## 2   100 0.432 0.0214 0.0120 
+## 3  1000 0.372 0.0184 0.00185</pre>
+
+</article></slide><slide class=""><hgroup><h2>1. Standard Errors</h2></hgroup><article  id="standard-errors">
+
+<p>Here we see that our standard errors have significant differences between distributions and n values. As n increases all of them approach 0, but N03 and N31 both have very nearly 0 values for all n values. I suspect that N03 has these very low standard errors because</p>
+
+<pre >## # A tibble: 3 x 4
+##       n    N01      N31      N03
+##   &lt;dbl&gt;  &lt;dbl&gt;    &lt;dbl&gt;    &lt;dbl&gt;
+## 1    10 0.287  0.0145   0.0672  
+## 2   100 0.0615 0.00302  0.00220 
+## 3  1000 0.0178 0.000885 0.000186</pre>
+
+</article></slide><slide class=""><hgroup><h2>2. Building functions</h2></hgroup><article  id="building-functions">
+
+<p>Let’s first create our data set and instantiate the proper variables. We use a modified version of the function from question 1 to build our dummy data and solve for the standard errors various ways.</p>
 
 <pre class = 'prettyprint lang-r'>set.seed(42)
 
@@ -275,7 +241,8 @@ reg_test = function(rep, omega, index, covtype){
   n = rep(0,100)
   n = replace_func(index, n) # Use the replace function to build the dummy vector
   p = length(which(n==1))
-  errors = c(rnorm(p, 0, omega^2), rnorm(length(n)-p, 0, 1)) # Build error vector based on inputs omega and index
+  # Build error vector based on inputs omega and index
+  errors = c(rnorm(p, 0, omega^2), rnorm(length(n)-p, 0, 1)) 
   
   df = tibble(xx = n, # Dummy variables for data generation are repressed by beta = 0
               err = errors,
@@ -289,26 +256,21 @@ reg_test = function(rep, omega, index, covtype){
               T_stat = coeftest(reg, vcov. = vcovHC(reg, type = &#39;HC1&#39;))[6]))
 }
 
+
 ## Parameter Settings
-param_list.2 &lt;- expand.grid(rep=1:100, omega = c(1,2), index=c(3,10,25), covtype=list(&quot;const&quot;, &quot;HC0&quot;, &quot;HC1&quot;, &quot;HC2&quot;))
+param_list.2 &lt;- expand.grid(rep=1:100, omega = c(1,2),
+                            index=c(3,10,25), covtype=list(&quot;const&quot;, &quot;HC0&quot;, &quot;HC1&quot;, &quot;HC2&quot;))
 
 ## Run simulation
 sim_out.2 &lt;- param_list.2 %&gt;%
   mutate(results=pmap(param_list.2,reg_test)) %&gt;%
-  unnest_wider(results)
+  unnest_wider(results)</pre>
 
+</article></slide><slide class=""><hgroup><h2>2. True SE</h2></hgroup><article  id="true-se">
 
+<p>Below is the simulation output for our True SE given each HCx type and each combination of \(\omega\) and \(n_1\). We notice that our HCx groups give much higher SE values for \(\omega = 2\) for low values of \(n_1\) and slowly shrink as \(n_1\) grows.</p>
 
-# Print for True
-sim_print.true &lt;- group_by(sim_out.2, omega, index, covtype) %&gt;%
-  mutate(mean_beta=mean(True)) %&gt;%
-  ungroup() %&gt;%
-  select(omega,index,covtype,mean_beta) %&gt;%
-  distinct() %&gt;%
-  pivot_wider(names_from=covtype, values_from=mean_beta)
-
-sim_print.true
-## # A tibble: 6 x 6
+<pre >## # A tibble: 6 x 6
 ##   omega index  const      HC0     HC1     HC2
 ##   &lt;dbl&gt; &lt;dbl&gt;  &lt;dbl&gt;    &lt;dbl&gt;   &lt;dbl&gt;   &lt;dbl&gt;
 ## 1     1     3 0.703    0.352    0.614   0.694
@@ -318,16 +280,11 @@ sim_print.true
 ## 5     1    25 0.0995   0.0968   0.118   0.103
 ## 6     2    25 6.38    19.7     20.4    20.1</pre>
 
-<pre class = 'prettyprint lang-r'># Print for AVSE
-sim_print.avse &lt;- group_by(sim_out.2, omega, index, covtype) %&gt;%
-  mutate(mean_beta=mean(AvgOver)) %&gt;%
-  ungroup() %&gt;%
-  select(omega,index,covtype,mean_beta) %&gt;%
-  distinct() %&gt;%
-  pivot_wider(names_from=covtype, values_from=mean_beta)
+</article></slide><slide class=""><hgroup><h2>2. AVSE</h2></hgroup><article  id="avse">
 
-sim_print.avse
-## # A tibble: 6 x 6
+<p>We find in the AVSE the strongest case for using HCx rather than running a linear regression without any correction. The values for all HCx regressions are much stronger for both values of \(\omega\) and as \(n_1\) grows.</p>
+
+<pre >## # A tibble: 6 x 6
 ##   omega index const   HC0   HC1    HC2
 ##   &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt;  &lt;dbl&gt;
 ## 1     1     3 0.827 0.449 0.611  0.628
@@ -337,16 +294,11 @@ sim_print.avse
 ## 5     1    25 0.310 0.303 0.333  0.313
 ## 6     2    25 2.37  4.18  4.29   4.14</pre>
 
-<pre class = 'prettyprint lang-r'># Print for T-Test
-sim_print.ttest &lt;- group_by(sim_out.2, omega, index, covtype) %&gt;%
-  mutate(mean_beta=mean(T_stat)) %&gt;%
-  ungroup() %&gt;%
-  select(omega,index,covtype,mean_beta) %&gt;%
-  distinct() %&gt;%
-  pivot_wider(names_from=covtype, values_from=mean_beta)
+</article></slide><slide class=""><hgroup><h2>2. T-Test</h2></hgroup><article  id="t-test">
 
-sim_print.ttest
-## # A tibble: 6 x 6
+<p>For low values of \(n_1\) we are able to find convincing t-test values for any HCx given \(\omega = 2\), however as we approach a more balanced distribution of dummy variables we see T-test values that would suggest that \(\hat{\beta}_1 \neq 0\) even more strongly. Notice also that for \(\omega = 1\) the t-test values approach 0 as \(n_1\) grows as we fail to reject the null. This aligns with Hanson’s text noting the intractability of these methods with very small \(n_1\) values.</p>
+
+<pre >## # A tibble: 6 x 6
 ##   omega index    const    HC0     HC1     HC2
 ##   &lt;dbl&gt; &lt;dbl&gt;    &lt;dbl&gt;  &lt;dbl&gt;   &lt;dbl&gt;   &lt;dbl&gt;
 ## 1     1     3 -1.36    -1.25  -0.784  -1.32  

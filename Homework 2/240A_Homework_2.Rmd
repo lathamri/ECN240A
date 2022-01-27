@@ -43,14 +43,17 @@ dist_list = list(N01 = function(n) rlnorm(n,0,1),
 Here we follow the function outlined on canvas to build out our results. This allows us to quickly solve for $\hat{\beta}_1$ under each distribution of $x$.
 
 ```{r}
+set.seed(42)
 # Create simulation function to generate results.
 sim_func = function(rep, n, pop_dist){
   
   dat <- tibble(xx = dist_list[[pop_dist]](n),
            err = rnorm(n=n,0,1),
-           y=xx+err)
+           y=log(xx)+err)
   reg <- lm(y~xx, data=dat)
-  results <- list(beta_lm = coefficients(reg)[2], beta_ana = cov(x=dat$xx, y=dat$y)/var(x=dat$xx), SE = se <- sqrt(diag(vcov(reg)))[2])
+  results <- list(beta_lm = coefficients(reg)[2],
+                  beta_ana = cov(x=dat$xx, y=dat$y)/var(x=dat$xx),
+                  SE = se <- sqrt(diag(vcov(reg)))[2])
   return(results)
 }
 
@@ -58,9 +61,10 @@ sim_func = function(rep, n, pop_dist){
 
 ## 1. Simulation output
 
-Finally we're ready to run and output our simulation. The values shown are averages for each $\hat{\beta}_1$ across 1000 repetitions. We see that the mis-specification of our data generation creates no bias using lognormal distributions because OLS is unbiased in the mean over normal distributions.
+Finally we're ready to run and output our simulation. The values shown are averages for each $\hat{\beta}_1$ across 1000 repetitions. We see that the mis-specification of our data generation creates 
 
 ```{r, echo=F}
+set.seed(42)
 # Instantiate repetitions and grid of parameters for running simulations
 num_reps=1000
 param_list <- expand.grid(rep=1:num_reps, n=c(10,100,1000), pop_dist = c("N01", "N31", "N03")) 
@@ -82,7 +86,9 @@ sim_print
 
 ```
 
+## 1. Standard Errors
 
+Here we see that our standard errors have significant differences between distributions and n values. As n increases all of them approach 0, but N03 and N31 both have very nearly 0 values for all n values. I suspect that N03 has these very low standard errors because 
 
 ```{r, echo=F}
 
@@ -98,11 +104,8 @@ sim_print.se
 
 ```
 
-## 2
 
-Let's first create our data set and instantiate the proper variables.
-
-```{r}
+```{r, echo=F, include=F}
 
 # takes in an amount of values to replace labeled index and a starting list, in this case a vector of 100 zeros.
 # recursively applies the replace function to get our new list of sparse dummy variables.
@@ -114,7 +117,9 @@ replace_func = function(index, n) {
 }
 ```
 
-Now we can simulate these regressions under different HCx situations.
+## 2. Building functions
+
+Let's first create our data set and instantiate the proper variables. We use a modified version of the function from question 1 to build our dummy data and solve for the standard errors various ways.
 
 ```{r}
 set.seed(42)
@@ -126,7 +131,8 @@ reg_test = function(rep, omega, index, covtype){
   n = rep(0,100)
   n = replace_func(index, n) # Use the replace function to build the dummy vector
   p = length(which(n==1))
-  errors = c(rnorm(p, 0, omega^2), rnorm(length(n)-p, 0, 1)) # Build error vector based on inputs omega and index
+  # Build error vector based on inputs omega and index
+  errors = c(rnorm(p, 0, omega^2), rnorm(length(n)-p, 0, 1)) 
   
   df = tibble(xx = n, # Dummy variables for data generation are repressed by beta = 0
               err = errors,
@@ -140,15 +146,23 @@ reg_test = function(rep, omega, index, covtype){
               T_stat = coeftest(reg, vcov. = vcovHC(reg, type = 'HC1'))[6]))
 }
 
+
 ## Parameter Settings
-param_list.2 <- expand.grid(rep=1:100, omega = c(1,2), index=c(3,10,25), covtype=list("const", "HC0", "HC1", "HC2"))
+param_list.2 <- expand.grid(rep=1:100, omega = c(1,2),
+                            index=c(3,10,25), covtype=list("const", "HC0", "HC1", "HC2"))
 
 ## Run simulation
 sim_out.2 <- param_list.2 %>%
   mutate(results=pmap(param_list.2,reg_test)) %>%
   unnest_wider(results)
 
+```
 
+## 2. True SE
+
+Below is the simulation output for our True SE given each HCx type and each combination of $\omega$ and $n_1$. We notice that our HCx groups give much higher SE values for $\omega = 2$ for low values of $n_1$ and slowly shrink as $n_1$ grows.
+
+```{r, echo=F}
 
 # Print for True
 sim_print.true <- group_by(sim_out.2, omega, index, covtype) %>%
@@ -159,6 +173,13 @@ sim_print.true <- group_by(sim_out.2, omega, index, covtype) %>%
   pivot_wider(names_from=covtype, values_from=mean_beta)
 
 sim_print.true
+```
+ 
+## 2. AVSE
+
+We find in the AVSE the strongest case for using HCx rather than running a linear regression without any correction. The values for all HCx regressions are much stronger for both values of $\omega$ and as $n_1$ grows.
+
+```{r, echo=F}
 
 # Print for AVSE
 sim_print.avse <- group_by(sim_out.2, omega, index, covtype) %>%
@@ -169,6 +190,14 @@ sim_print.avse <- group_by(sim_out.2, omega, index, covtype) %>%
   pivot_wider(names_from=covtype, values_from=mean_beta)
 
 sim_print.avse
+
+```
+
+## 2. T-Test
+
+For low values of $n_1$ we are able to find convincing t-test values for any HCx given $\omega = 2$, however as we approach a more balanced distribution of dummy variables we see T-test values that would suggest that $\hat{\beta}_1 \neq 0$ even more strongly. Notice also that for $\omega = 1$ the t-test values approach 0 as $n_1$ grows as we fail to reject the null. This aligns with Hanson's text noting the intractability of these methods with very small $n_1$ values.
+
+```{r, echo=F}
 
 # Print for T-Test
 sim_print.ttest <- group_by(sim_out.2, omega, index, covtype) %>%
