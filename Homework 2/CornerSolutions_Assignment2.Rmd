@@ -1,0 +1,335 @@
+---
+title: "240A Homework 2"
+author: "Corner Solutions - Riley Latham, Winnie Yang, Camila Holm, Jeff Cheung"
+date: "January 25, 2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+
+#knitr::opts_chunk$set(echo = FALSE)
+#knitr::opts_chunk$set(prompt = TRUE)
+#hook1 <- function(x){ gsub("```\n*```r*\n*", "", x) }
+# These lines improve formatting of output by removing blank space
+hook2 <- function(x){ gsub("```\n+```\n", "", x) }
+knitr::knit_hooks$set(document = hook2)
+```
+
+```{r Gather Libraries, echo=F, results=F, include=FALSE}
+library(tidyverse, dplyr)
+
+library(lmtest)
+
+library(sandwich)
+```
+
+## 1. Data Creation
+
+We first create our distribution list of length n. We use lognormal distributions for each value and vary the parameters for mean and standard deviation.
+
+```{r}
+
+# Set seed for repeatable results
+set.seed(42)
+
+# Create list of distributions of interest
+dist_list = list(N01 = function(n) rlnorm(n,0,1),
+                 N31 = function(n) rlnorm(n,3,1),
+                 N03 = function(n) rlnorm(n,0,3))
+```
+
+## 1. Population Values
+
+Here we find the population values for each of our distributions of interest. We use these to compare our estimates in the next step.
+
+```{r}
+#1.1 pop values of beta hat
+
+# for logx ~ n(0,1)
+covxy <- 1*exp(0+.5*1)
+varx <- (exp(1)-1)*exp(1)
+bhat01 <- covxy/varx
+
+#n31
+covxy <- 1*exp(3+.5*1)
+varx <- (exp(1)-1)*exp(6+1)
+bhat31 <- covxy/varx
+
+#n03
+covxy <- 3*exp(0+.5*3)
+varx <- (exp(3)-1)*exp(0+3)
+bhat03 <- covxy/varx
+
+print("N(0,1)")
+bhat01
+
+print("N(3,1)")
+bhat31
+
+print("N(0,3)")
+bhat03
+
+```
+
+
+## 1. Simulation Function
+
+Here we follow the function outlined on canvas to build out our results. This allows us to quickly solve for $\hat{\beta}_1$ under each distribution of $x$.
+
+```{r}
+set.seed(42)
+# Create simulation function to generate results.
+sim_func = function(rep, n, pop_dist){
+  
+  dat <- tibble(xx = dist_list[[pop_dist]](n),
+           err = rnorm(n=n,0,1),
+           y=log(xx)+err)
+  reg <- lm(y~xx, data=dat)
+  results <- list(beta_lm = coefficients(reg)[2],
+                  beta_ana = cov(x=dat$xx, y=dat$y)/var(x=dat$xx),
+                  SE = se <- sqrt(diag(vcov(reg)))[2])
+  return(results)
+}
+
+```
+
+## 1. Simulation output
+
+Finally we're ready to run and output our simulation. The values shown are averages for each $\hat{\beta}_1$ across 1000 repetitions. We see that the mis-specification of our data generation creates bias issues for low $n$ values which washes out as $n$ increases. The issue then is $N(0,3)$ does not have this occurrence.
+
+```{r}
+set.seed(42)
+# Instantiate repetitions and grid of parameters for running simulations
+num_reps=1000
+param_list <- expand.grid(rep=1:num_reps, n=c(10,100,1000), pop_dist = c("N01", "N31", "N03")) 
+
+# Pass parameters to simulation
+sim_out <- param_list %>%
+  mutate(results=pmap(param_list,sim_func)) %>%
+  unnest_wider(results) 
+
+# Group and print relevant information
+sim_print <- group_by(sim_out,n,pop_dist) %>%
+  mutate(mean_beta=mean( beta_lm)) %>%
+  ungroup() %>%
+  select(n,pop_dist,mean_beta) %>%
+  distinct() %>%
+  pivot_wider(names_from=pop_dist, values_from=mean_beta)
+
+sim_print
+
+```
+
+## 1. Standard Errors
+
+Here we see that our standard errors have significant differences between distributions and n values. As n increases all of them approach 0, but N03 has very nearly 0 values for all n. I suspect that these low standard errors are what causes the persistence of bias in this term.
+
+```{r, echo=F}
+
+# Group and print relevant information
+sim_print.se <- group_by(sim_out,n,pop_dist) %>%
+  mutate(mean_SE=mean(SE)) %>%
+  ungroup() %>%
+  select(n,pop_dist,mean_SE) %>%
+  distinct() %>%
+  pivot_wider(names_from=pop_dist, values_from=mean_SE)
+
+sim_print.se
+
+```
+
+
+```{r, echo=F, include=F}
+
+# takes in an amount of values to replace labeled index and a starting list, in this case a vector of 100 zeros.
+# recursively applies the replace function to get our new list of sparse dummy variables.
+replace_func = function(index, n) {
+  for (i in 1:index) {
+  n = replace(n, i, 1)
+  }
+  return(n)
+}
+```
+
+## 2. Building Functions for HCx and Ideal
+
+Here I modify the function from question 1 to create the dummy vector defined by my $n_1$ parameter from the question. Then I'm able to solve for the outputs across all combinations of $n_1$, $\omega$, and HCx pairs. It allows me to capture the true standard errors, the average estimated standard error, and the probability of rejection using a t-stat.
+
+For the ideal function, I was unable to construct it alongside my other observations, but I include it separately. The difficulty came when trying to pass multiple NULL arguments for (omega=...) and so I separate the ideal beta estimates into their own tables.
+
+```{r}
+set.seed(42)
+
+# NOTE I used this function for solving originally but wasn't able to build the "ideal" HC in time so I use my groups above. This is left in as I have this shared to my github and want this function for later uses! Don't grade this portion! Thank you.
+
+# First we build our regression function
+
+reg_test = function(rep, omega, index, covtype){
+  # Instantiate vector of zeros 
+  n = rep(0,100)
+  n = replace_func(index, n) # Use the replace function to build the dummy vector
+  p = length(which(n==1))
+  # Build error vector based on inputs omega and index
+  errors = c(rnorm(p, 0, omega^2), rnorm(length(n)-p, 0, 1))
+  
+  df = tibble(xx = n, # Dummy variables for data generation are repressed by beta = 0
+              err = errors,
+              y = err)
+  
+  reg = lm(y~xx, data=df)
+  
+  AVSE = sqrt(diag(vcovHC(reg, type=covtype)))[2] # average Squared variance estimate
+  
+  tstat = coeftest(reg, vcov. = vcovHC(reg, type = covtype))[6]
+  
+  return(list(True = diag(vcovHC(reg, type=covtype))[2], AvgOver = AVSE, 
+              T_stat= length(tstat[tstat>1.96])/length(tstat)))
+}
+
+## Parameter Settings
+param_list.2 <- expand.grid(rep=1:100, omega = c(1,2),
+                            index=c(3,10,25), covtype=list("const", "HC0", "HC1", "HC2"))
+
+## Run simulation
+sim_out.2 <- param_list.2 %>%
+  mutate(results=pmap(param_list.2,reg_test)) %>%
+  unnest_wider(results)
+
+```
+
+```{r Ideal function, echo=F}
+
+reg_ideal = function(rep, omega, index){
+  # Instantiate vector of zeros 
+  n = rep(0,100)
+  n = replace_func(index, n) # Use the replace function to build the dummy vector
+  p = length(which(n==1))
+  # Build error vector based on inputs omega and index
+  errors = c(rnorm(p, 0, omega^2), rnorm(length(n)-p, 0, 1))
+  
+  df = tibble(xx = n, # Dummy variables for data generation are repressed by beta = 0
+              err = errors,
+              y = err)
+  
+  reg = lm(y~xx, data=df)
+  
+  sigmas <- c(rep(omega, p), rep(1, length(n)-p))
+  
+  AVSE = sqrt(diag(vcovHC(reg, omega=sigmas)))[2] # average Squared variance estimate
+  
+  tstat = coeftest(reg, vcov. = vcovHC(reg, omega=sigmas))[6]
+  
+  return(list(True = diag(vcovHC(reg, omega=sigmas))[2], AvgOver = AVSE, 
+              T_stat=length(tstat[tstat>1.96])/length(tstat)))
+}
+
+## Parameter Settings
+param_list.ideal <- expand.grid(rep=1:100, omega = c(1,2),
+                            index=c(3,10,25))
+
+## Run simulation
+sim_out.ideal <- param_list.ideal %>%
+  mutate(results=pmap(param_list.ideal,reg_ideal)) %>%
+  unnest_wider(results)
+
+```
+
+## 2. True SE
+
+Below is the simulation output for our True SE given each HCx type and each combination of $\omega$ and $n_1$. We notice that our HCx groups give much higher SE values for $\omega = 2$ for low values of $n_1$ and slowly shrink as $n_1$ grows. Interestingly, the estimates with no HC are nearly identical to the ideal beta estimates when $\omega=1$. The ideal estimates are higher for $\omega=2$ which is more consistent with the HCx estimates. These HCx estimates shrink as we approach a more balanced dummy vectors which is further explained later on.
+
+```{r, echo=F}
+
+# Print for True
+sim_print.true <- group_by(sim_out.2, omega, index, covtype) %>%
+  mutate(mean_beta=mean(True)) %>%
+  ungroup() %>%
+  select(omega,index,covtype,mean_beta) %>%
+  distinct() %>%
+  pivot_wider(names_from=covtype, values_from=mean_beta)
+sim_print.true
+
+```
+ 
+```{r Ideal Results True, echo=F}
+sim_print.trueideal <- group_by(sim_out.ideal, omega, index) %>%
+  mutate(mean_beta=mean(True)) %>%
+  ungroup() %>%
+  select(omega,index,mean_beta) %>%
+  distinct() %>%
+  pivot_wider(names_from="omega", values_from=mean_beta)
+sim_print.trueideal
+
+```
+ 
+ 
+## 2. AVGSE
+
+The AVGSE case shows again the inequality described on Hansens pg. 114. (HC0 < HC2). The information provided here is very similar to what is described in our discussion of True standard error estimates.
+
+```{r, echo=F}
+
+# Print for AVSE
+sim_print.avse <- group_by(sim_out.2, omega, index, covtype) %>%
+  mutate(mean_beta=mean(AvgOver)) %>%
+  ungroup() %>%
+  select(omega,index,covtype,mean_beta) %>%
+  distinct() %>%
+  pivot_wider(names_from=covtype, values_from=mean_beta)
+
+sim_print.avse
+
+```
+
+```{r AVSE Ideal, echo=F}
+
+# Print for AVSE
+sim_print.avseIdeal <- group_by(sim_out.ideal, omega, index) %>%
+  mutate(mean_beta=mean(AvgOver)) %>%
+  ungroup() %>%
+  select(omega,index,mean_beta) %>%
+  distinct() %>%
+  pivot_wider(names_from=omega, values_from=mean_beta)
+
+sim_print.avseIdeal
+
+```
+
+## 2. T-Test
+
+For low values of $n_1$ we are able to find convincing t-test values for any HCx given $\omega = 2$, however as we approach a more balanced distribution of dummy variables we see T-test values that would not suggest that $\hat{\beta}_1 \neq 0$. Notice also that for $\omega = 1$ the t-test values approach or stay close to 0 as $n_1$ grows as we fail to reject the null. This aligns with Hanson's text noting the intractability of these methods with very small $n_1$ values.
+
+We also note that the all estimates have decreasing t-test rejections even for $\omega=2$ as $n_1$ grows other than the ideal estimate. The HCx estimates decrease more quickly and also have smaller rejection values for low $n_1$.
+
+```{r, echo=F}
+
+# Print for T-Test
+sim_print.ttest <- group_by(sim_out.2, omega, index, covtype) %>%
+  mutate(mean_beta=mean(T_stat)) %>%
+  ungroup() %>%
+  select(omega,index,covtype,mean_beta) %>%
+  distinct() %>%
+  pivot_wider(names_from=covtype, values_from=mean_beta)
+
+sim_print.ttest
+
+```
+
+```{r tstat Ideal, echo=F}
+
+# Print for T-Test
+sim_print.ttestIdeal <- group_by(sim_out.ideal, omega, index) %>%
+  mutate(mean_beta=mean(T_stat)) %>%
+  ungroup() %>%
+  select(omega,index,mean_beta) %>%
+  distinct() %>%
+  pivot_wider(names_from=omega, values_from=mean_beta)
+
+sim_print.ttestIdeal
+
+```
+
+
+
+
+

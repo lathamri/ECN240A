@@ -1,0 +1,78 @@
+---
+title: "SaveSpotHomework2"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## 2. Building functions
+
+Let's first create our data set and instantiate the proper variables. We use a modified version of the function from question 1 to build our dummy data and solve for the standard errors various ways.
+
+```{r, echo=F}
+set.seed(42)
+
+# First we build our regression function
+
+reg_test = function(rep, omega, index){
+  # Instantiate vector of zeros 
+  n = rep(0,100)
+  n = replace_func(index, n) # Use the replace function to build the dummy vector
+  p = length(which(n==1))
+  # Build error vector based on inputs omega and index
+  errors = c(rnorm(p, 0, omega^2), rnorm(length(n)-p, 0, 1))
+  
+  df = tibble(xx = n, # Dummy variables for data generation are repressed by beta = 0
+              err = errors,
+              y = err)
+  
+  reg = lm(y~xx, data=df)
+  sigmas <- c(rep(omega, p), rep(1, length(n)-p))
+  results <-
+    list(
+      beta = coefficients(reg)[2],
+      sigB_0 = sqrt(vcovHC(reg, type = 'const')[2,2]),
+      sigB_ideal = sqrt(vcovHC(reg, omega = sigmas ^ 2)[2,2]),
+      sigB_HC0 = sqrt(vcovHC(reg, type ='HC0')[2,2]),
+      sigB_HC1 = sqrt(vcovHC(reg, type ='HC1')[2,2]),
+      sigB_HC2 = sqrt(vcovHC(reg, type ='HC2')[2,2]),
+      tstat = coef(summary(reg))["xx", "t value"]
+    )  # extract the slope coefficient from each simulation
+  return(results)
+}
+
+## Parameter Settings
+param_list.2 <- expand.grid(rep=1:100, omega = c(1,2),
+                            index=c(3,10,25))
+
+## Run simulation
+sim_out.2 <- param_list.2 %>%
+  mutate(results=pmap(param_list.2,reg_test)) %>%
+  unnest_wider(results)
+
+```
+
+## 2. Results
+
+Below is the simulation output for our standard errors given each HCx type and each combination of $\omega$ and $n_1$. We notice that our HCx groups give much higher standard error values for $\omega = 2$ for low values of $n_1$ and slowly shrink as $n_1$ grows. This is to be expected as we also note the T-stat showing relatively high probability of rejection for $\omega=2$ which shrinks as $n_1$ grows. This shows that as we approach a balanced dummy variable vector that the need for corrections from HC goes away.
+
+When $n_1 = 25$ we find that nearly all of our $\omega=1$ estimates agree, and that the $\omega=2$ estimates show our ideal and 0 correction terms closely related where the HC group is much higher, again confirming our findings.
+
+```{r}
+## Print result
+sim_print <- group_by(sim_out.2,index, omega) %>%
+  mutate(sd_beta2=sd(beta), mean_0=mean(sigB_0), mean_idl=mean(sigB_ideal), mean_HC0=mean(sigB_HC0), mean_HC1=mean(sigB_HC1), mean_HC2 = mean(sigB_HC2), p_rej= length(tstat[tstat>1.96])/length(tstat)) %>%
+  ungroup() %>%
+  select(index,omega,sd_beta2, mean_0, mean_idl, mean_HC0, mean_HC1, mean_HC2, p_rej) %>%
+  distinct() 
+
+sim_print
+```
+
+
+
+#############################################
+
+Save spot

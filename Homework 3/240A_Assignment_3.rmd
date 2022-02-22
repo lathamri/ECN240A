@@ -1,0 +1,43 @@
+---
+title: "240A Winter 2022: Computing Assignment III"
+output: pdf_document
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+DUE: 6pm on 2/17. Upload to Canvas an RMD file and either a PDF or html file. 
+
+Your compiled file should contain slides that you will present during discussion (if your group is chosen). 
+
+One selected group will present problem 1 and the other will present problem 2
+
+
+## 1. Explain convergence to your students
+
+You are teaching an introductory econometrics class, and a student asks a question:
+
+* You said the OLS estimator converges to a constant, and then you said it converges to a normal distribution. How can both happen simultaneously?
+
+Use simulations and graphs to answer this question. In the process, you will have to demonstrate the properties of consistency and asymptotic normality.
+
+
+## 2. Augustin-Louis Cauchy
+
+You will study (un)biasedness and convergence of the OLS estimator for one case where the LLN and CLT hold and another case where they do not.
+
+Use the data generating process $y_i=0.9+0.5x_i + e_i$, where $x_i \sim N(0,1)$. Consider two different error distributions: 
+
+* $e_i \sim iid N(0,1)$
+* $e_i \sim iid Cauchy(0,1)$
+
+For the OLS slope coefficient,
+
+1. make a table showing, for various sample sizes, the mean and standard deviation across samples.
+
+2. produce a graph(s) showing the sampling distribution for various sample sizes.
+
+3. explain the contents of your table and graphs based on the asymptotic theory seen in class. 
+
