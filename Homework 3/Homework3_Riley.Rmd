@@ -1,0 +1,128 @@
+---
+title: "Homework3"
+author: "Riley Latham"
+date: "2/23/2022"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(sandwich)
+library(ggplot2)
+library(tidyverse)
+```
+1. We are asked to show that $\hat{\beta}_1$ converges to both a constant and a normal distrbution. This is a function of it being derived using the CLT. Recall that $\hat{\beta}_1 \sim N(\beta, \dfrac{V_{\beta}}n)$, and so as $n \rightarrow \infty$ our variance goes to 0. Below we use show this graphically using non-normal errors and show that they not only approximate $\beta$ but also have variance going to 0, which is exactly what we want.
+```{r 1.Function_Builds, include=F}
+
+# Init Variables
+set.seed(42)
+num_reps=1000
+dist_list = list(function(n) rnorm(n),
+                 function(n) rpois(n, 1),
+                 function(n) rchisq(n, 1))
+param_list = expand.grid(reps=1:num_reps, n=c(10,100,1000),
+                         distro = c("Norm", "Pois", "ChiSq")) 
+
+# Function Builds
+sim_func = function(reps,n,distro) {
+  dgp = tibble(err = dist_list[[distro]](n),
+               xx = rnorm(n),
+               y = 0.9 + 0.5*xx + err)
+  mod = lm(y~xx, data=dgp)
+  
+  return(list(beta=coefficients(mod)[2], dgp))
+}
+
+## Run simulation
+sim_out = param_list %>%
+  mutate(results=pmap(param_list,sim_func)) %>%
+  mutate(sqrtn=sqrt(n)) %>%
+  unnest_wider(results) 
+
+sim_print = group_by(sim_out,n,distro) %>%
+  mutate(mean_beta=mean(beta),sd_beta=sd(beta)) %>%
+  ungroup() %>%
+  select(n,distro,mean_beta,sd_beta) %>%
+  distinct() %>%
+  pivot_wider(names_from=distro, values_from=c(mean_beta,sd_beta))
+
+```
+
+So as $\sqrt{n} \rightarrow \infty$ our variance approaches 0 and we notice our $\hat{\beta}_1 \rightarrow \beta$ which is a constant!
+
+```{r 1.Graphing}
+
+p = sim_out %>%
+  ggplot(aes(x=beta, fill=sqrtn, group=n)) + 
+  geom_density()
+# Add mean line
+p+ geom_vline(aes(xintercept=mean(beta)),
+            color="blue", linetype="dashed", size=1)
+
+```
+
+2. Here we are asked to explore the Cauchy distribution. I used the prescribed DGP in the previous problem for convenince, so I'm able to recycle some of the functions here.
+
+```{r 2.Function_Builds, include=F}
+
+# Init Variables
+set.seed(42)
+num_reps=1000
+dist_list_2 = list(function(n) rnorm(n),
+                 function(n) rcauchy(n))
+param_list_2 = expand.grid(reps=1:num_reps, n=c(10,100,1000),
+                         distro = c("Norm", "Cauchy")) 
+
+# Function Builds
+sim_func_2 = function(reps,n,distro) {
+  dgp = tibble(err = dist_list_2[[distro]](n),
+               xx = rnorm(n),
+               y = 0.9 + 0.5*xx + err)
+  mod = lm(y~xx, data=dgp)
+  
+  return(list(beta=coefficients(mod)[2]))
+}
+
+## Run simulation
+sim_out_2 = param_list_2 %>%
+  mutate(results=pmap(param_list_2,sim_func_2)) %>%
+  mutate(sqrtn=sqrt(n)) %>%
+  unnest_wider(results) 
+
+sim_print_2 = group_by(sim_out_2,n,distro) %>%
+  mutate(mean_beta=mean(beta),sd_beta=sd(beta)) %>%
+  ungroup() %>%
+  select(n,distro,mean_beta,sd_beta) %>%
+  distinct() %>%
+  pivot_wider(names_from=distro, values_from=c(mean_beta,sd_beta))
+
+```
+
+```{r 2.Table_Out}
+sim_print_2
+```
+
+```{r 2.Graphing}
+
+p_den= sim_out_2 %>%
+  ggplot(aes(x=beta, fill=sqrtn, group=n)) + 
+  geom_density() + 
+  xlim(c(-5,5))
+# Add mean line
+p_den + geom_vline(aes(xintercept=0.5),
+            color="blue", linetype="dashed", size=1) + 
+  facet_grid(distro~.)
+
+p_vio = sim_out_2 %>%
+  ggplot(aes(x=sqrtn, y=beta, fill=sqrtn, group=n)) + 
+  geom_violin() + 
+  ylim(c(-5,5)) + 
+  facet_grid(distro~.)
+
+p_vio
+
+```
+
+2.3 Since the Cauchy distribution doesn't have finite moments we're not able to use the asymptotic properties that would apply under proper constraints to most distributions. That's why our errors never converge to 0 and we never achieve the convergence to $\beta$ as we do when we have errors that follow distributions with finite moments.
+
+
