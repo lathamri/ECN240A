@@ -1,6 +1,6 @@
 ---
-title: "Homework3"
-author: "Riley Latham"
+title: "Homework 3"
+author: "Corner Solutions"
 date: "2/23/2022"
 output: pdf_document
 ---
@@ -11,7 +11,7 @@ library(sandwich)
 library(ggplot2)
 library(tidyverse)
 ```
-1. We are asked to show that $\hat{\beta}_1$ converges to both a constant and a normal distrbution. This is a function of it being derived using the CLT. Recall that $\hat{\beta}_1 \sim N(\beta, \dfrac{V_{\beta}}n)$, and so as $n \rightarrow \infty$ our variance goes to 0. Below we use show this graphically using non-normal errors and show that they not only approximate $\beta$ but also have variance going to 0, which is exactly what we want.
+1. We are asked to show that $\hat{\beta}$ converges to both a constant and a normal distrbution. This is a function of it being derived using the CLT. Recall that $\hat{\beta} \sim N(\beta, \dfrac{V_{\beta}}n)$, and so as $n \rightarrow \infty$ our variance goes to 0. Below we use show this graphically using non-normal errors and show that they not only approximate $\beta$ but also have variance going to 0, which is exactly what we want.
 ```{r 1.Function_Builds, include=F}
 
 # Init Variables
@@ -50,16 +50,18 @@ sim_print = group_by(sim_out,n,distro) %>%
 
 So as $\sqrt{n} \rightarrow \infty$ our variance approaches 0 and we notice our $\hat{\beta}_1 \rightarrow \beta$ which is a constant!
 
-```{r 1.Graphing}
+```{r 1.Graphing, echo=F}
 
 p = sim_out %>%
-  ggplot(aes(x=beta, fill=sqrtn, group=n)) + 
+  ggplot(aes(x=beta, y=..scaled.., fill=sqrtn, group=n)) + 
   geom_density()
 # Add mean line
 p+ geom_vline(aes(xintercept=mean(beta)),
             color="blue", linetype="dashed", size=1)
 
 ```
+
+\newpage
 
 2. Here we are asked to explore the Cauchy distribution. I used the prescribed DGP in the previous problem for convenince, so I'm able to recycle some of the functions here.
 
@@ -98,14 +100,14 @@ sim_print_2 = group_by(sim_out_2,n,distro) %>%
 
 ```
 
-```{r 2.Table_Out}
+```{r 2.Table_Out, echo=F}
 sim_print_2
 ```
 
-```{r 2.Graphing}
+```{r 2.Graphing, echo=F}
 
 p_den= sim_out_2 %>%
-  ggplot(aes(x=beta, fill=sqrtn, group=n)) + 
+  ggplot(aes(x=beta, y=..scaled.., fill=sqrtn, group=n)) + 
   geom_density() + 
   xlim(c(-5,5))
 # Add mean line
