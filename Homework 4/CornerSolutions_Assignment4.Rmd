@@ -10,6 +10,8 @@ knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
 library(sandwich)
 library(broom)
+library(furrr)
+library(rsample)
 ```
 
 1. We must simulate data with error terms defined by a $\chi^2_{J}$ distribution in order to examine the power of a test.
@@ -22,7 +24,7 @@ num_reps = 100
 # Function to build data and grab results
 sim_func <- function(rep,n,J,b1){ 
   df <-tibble(err = rchisq(n, df=J)-J,
-                  x1=rnorm(n=n,mean=0,sd=1),
+                  x1=rnorm(n),
                   y = x1*b1+err)
   reg <- lm(y~x1, data=df)
   results <- list(beta1=coefficients(reg)[2],
@@ -77,8 +79,86 @@ pl_power_q2
 
 
 2. Ratio of Coefficients
- 
+
+```{r}
+set.seed(42)
+
+## number of repetitions
+num_reps<-100
+num_boots<-200
+
+## Define a function to apply to the bootstrap data
+bootstrap_func <- function(splits) {
+  reg <- lm(y~x1+x2,analysis(splits))
+  boot_stat <- list(b_boot_1=coefficients(reg)[2],
+                    b_boot_2=coefficients(reg)[3],
+                    v_boot_11=vcovHC(reg, type="const")[2,2],
+                    v_boot_12=vcovHC(reg, type="const")[2,3],
+                    v_boot_22=vcovHC(reg, type="const")[3,3])
+  return(boot_stat)
+}
+
+## Define a simulation function 
+sim_func_boot <- function(rep,n,beta2){ 
+  # generate data
+  df <-tibble(err = rnorm(n,0,3),
+              x1 = rnorm(n),
+              x2 = rnorm(n),
+              y = x1+x2*beta2+err)
+
+  # Run regression
+  reg <- lm(y~x1+x2,data=df)
+    bhat <- matrix(coefficients(reg),nrow=3,ncol=1)
+    R_nl <- matrix(c(0,bhat[3,1],bhat[2,1]),nrow=1,ncol=3)
+    W_0 <- (bhat[2,1]/bhat[3,1]-beta2) %*% solve(R_nl%*%vcovHC(reg, type="const")%*%t(R_nl)) %*% 
+      (bhat[2,1]/bhat[3,1]-beta2)
+    W_1 = (1-(1/bhat[3,1])*beta2) %*% solve(R_nl%*%vcovHC(reg, type="const")%*%t(R_nl)) %*%
+      (1-(1/bhat[3,1])*beta2)
+
+  # Run bootstrap
+  boots <- bootstraps(df, times = num_boots) %>%
+    mutate(boot_results = map(splits, bootstrap_func)) %>%
+    unnest_wider(boot_results)   %>%
+    mutate(Wald_0_boot=((b_boot_1/b_boot_2-bhat[3,1])^2)/(v_boot_11*b_boot_2^2+v_boot_22*b_boot_1^2+2
+                                                           *v_boot_12*b_boot_1*b_boot_2))  %>%
+    mutate(Wald_1_boot=((1-(1/b_boot_2)*beta2)^2)/(v_boot_11*b_boot_2^2+v_boot_22*b_boot_1^2+2
+                                                           *v_boot_12*b_boot_1*b_boot_2)) %>%
+    select(Wald_0_boot, Wald_1_boot)
+
+  # Make list of results to save
+  results <- list(W_0_ChiSq=W_0>2.71,
+                  ptile_W_0=W_0>quantile(boots$Wald_0_boot,probs=0.9),
+                  W_0=W_0,
+                  W_1_ChiSq=W_1>2.71,
+                  ptile_W_1=W_1>quantile(boots$Wald_1_boot,probs=0.9),
+                  W_1=W_1)
+  return(results)  
+}
+
+## Parameter Settings
+param_list_boot <- expand.grid(rep=1:num_reps, n=c(25), beta2=c(0.1,0.5,1))
+
+```
 
 
+```{r}
+set.seed(42)
+
+## Run simulation
+sim_out_boot <- param_list_boot %>% 
+  mutate(results = pmap(param_list_boot, sim_func_boot)) %>%
+  unnest_wider(results)
+
+## Print result
+sim_print_boot <- group_by(sim_out_boot,n,beta2) %>%
+  mutate(W_0 = mean(W_0_ChiSq)) %>%
+  mutate(W0_Rej = mean(ptile_W_0)) %>%
+  mutate(W_1 = mean(W_1_ChiSq)) %>%
+  mutate(W1_Rej = mean(ptile_W_1)) %>%
+  ungroup() %>%
+  select(n,beta2,W_0,W0_Rej,W_1,W1_Rej) %>%
+  distinct() 
+sim_print_boot
+```
 
 

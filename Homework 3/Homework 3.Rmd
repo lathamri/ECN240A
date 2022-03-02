@@ -1,0 +1,61 @@
+---
+title: "Homework 3"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r Setup, echo=F, include=F}
+library(ggplot2)
+library(tidyverse)
+library(dplyr)
+```
+
+1. First let's create a simulation to demonstrate the central limit theorem allowing us to have OLS converge to a normal distribution.
+
+```{r}
+set.seed(42)
+
+distro = list(function(n) rnorm(n), 
+              function(n) rcauchy(n), 
+              function(n) rchisq(n, 2))
+
+num_reps = 1000
+
+sim_func = function(rep, n, pop_dist){
+  
+  dgp = tibble(xx = distro[[pop_dist]](n),
+               e = rnorm(n),
+               y = xx+e)
+  model = lm(y~xx, data = dgp)
+  results = list(beta_lm = coefficients(model)[2],
+                  beta_ana = cov(x=dgp$xx, y=dgp$y)/var(x=dgp$xx),
+                  SE = se <- sqrt(diag(vcov(model)))[2])
+  
+  return(results)
+}
+
+param_list <- expand.grid(rep=1:num_reps, n=c(3,5, 10,20), pop_dist = c("Normal", "Uniform", "Chi Squared")) 
+
+# Pass parameters to simulation
+sim_out <- param_list %>%
+  mutate(results=pmap(param_list,sim_func)) %>%
+  unnest_wider(results)
+```
+
+```{r}
+
+sim_print <- group_by(sim_out,n,pop_dist) %>%
+  mutate(mean_beta=mean(beta_lm)) %>%
+  ungroup() %>%
+  select(n,pop_dist,mean_beta) %>%
+  distinct() %>%
+  pivot_wider(names_from=pop_dist, values_from=mean_beta)
+
+
+sim_print
+
+```
+
